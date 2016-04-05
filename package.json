@@ -1,0 +1,25 @@
+{
+  "name": "image-zoom",
+  "version": "1.0.0",
+  "description": "Medium style lightbox image zoomer",
+  "main": "image-zoom.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hinderson/image-zoom.git"
+  },
+  "keywords": [
+    "zoom",
+    "lightbox",
+    "medium",
+    "enbiggen"
+  ],
+  "author": "Mattias Hinderson",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hinderson/image-zoom/issues"
+  },
+  "homepage": "https://github.com/hinderson/image-zoom#readme"
+}
