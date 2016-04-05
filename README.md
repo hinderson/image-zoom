@@ -2,6 +2,8 @@
 Medium style lightbox image zoomer
 
 # Usage
+
+## CSS
 ```
 .zoom-overlay-active {
 	position: relative;
@@ -53,4 +55,11 @@ Medium style lightbox image zoomer
 		}
 	}
 }
+```
+
+## HTML
+```
+<a href="{{ imageUrl }}" data-zoomable data-width="{{ imageWidth }}" data-height="{{ imageHeight }}">
+    <img src="{{ thumbUrl }}" alt="">
+</a>
 ```
