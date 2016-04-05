@@ -87,72 +87,51 @@
     }
 
     function zoomOut (e) {
-        if (e) { e.target.removeEventListener('click', zoomOut); }
-
-        var image = (e && e.target.nodeName === 'IMG') ? e.target : document.querySelector('.img-zoom-container img');
+        var image = (e && e.target.nodeName === 'IMG') ? e.target : document.querySelector('[data-zoomable].is-zoomed img');
         if (!image) { return; }
 
-        pubsub.publish('zoomOutStart', thumb);
+        var container = image.parentNode;
 
-        var transitionEvent = utils.whichTransitionEvent();
-        var thumb = document.querySelector('.hidden');
+        pubsub.publish('zoomOutStart', container);
 
         // Reset transforms
         utils.requestAnimFrame.call(window, function ( ) {
-            document.body.classList.remove('zoom-overlay-open');
+            document.body.classList.remove('zoom-overlay-active');
+
+            container.classList.remove('is-zoomed');
+
             image.style.msTransform = '';
             image.style.webkitTransform = '';
             image.style.transform = '';
         });
 
         // Wait for transition to end
+        var transitionEvent = utils.whichTransitionEvent();
         image.addEventListener(transitionEvent, function resetImage ( ) {
             image.removeEventListener(transitionEvent, resetImage);
-            thumb.classList.remove('hidden');
 
-            var container = image.parentNode;
-            container.parentNode.removeChild(container);
+            container.classList.remove('is-active');
 
-            pubsub.publish('zoomOutEnd', thumb);
+            pubsub.publish('zoomOutEnd', container);
         });
     }
 
     function zoomIn (e) {
-        e.preventDefault();
-
         var transitionEvent = utils.whichTransitionEvent();
-        var thumb = e.target;
-        var thumbLink = e.target.parentNode;
-        var thumbRect = thumb.getBoundingClientRect();
+        var image = e.target;
+        var container = image.parentNode;
+        var thumbRect = image.getBoundingClientRect();
         var imageRect = {
-            width: thumbLink.getAttribute('data-width'),
-            height: thumbLink.getAttribute('data-height'),
+            width: container.getAttribute('data-width'),
+            height: container.getAttribute('data-height'),
         };
-        var clone = thumb.cloneNode(true);
 
-        pubsub.publish('zoomInStart', thumb);
+        pubsub.publish('zoomInStart', container);
 
-        // Set initial size and placement of clone and remove unneccesary attributes
-        clone.removeAttribute('srcset');
-        clone.removeAttribute('sizes');
-        clone.style.top = (cache.lastScrollY + thumbRect.top) + 'px';
-        clone.style.left = thumbRect.left + 'px';
-        clone.style.width = thumbRect.width + 'px';
-        clone.style.height = thumbRect.height + 'px';
-
-        // Append the clone to a container
-        var container = document.createElement('DIV');
-        container.className = 'img-zoom-container';
-        container.appendChild(clone);
-
-        // Append container to the body
-        document.body.appendChild(container);
-
-        // Hide original image
-        thumb.classList.add('hidden');
+        container.classList.add('is-active');
 
         // Force repaint
-        var repaint = clone.offsetWidth;
+        var repaint = image.offsetWidth;
 
         // Calculate offset
         var viewportY = cache.viewportHeight / 2;
@@ -166,14 +145,21 @@
 
         // Apply transforms
         utils.requestAnimFrame.call(window, function ( ) {
-            document.body.classList.add('zoom-overlay-open');
-            clone.style.msTransform = translate + ' ' + scale;
-            clone.style.webkitTransform = translate + ' ' + scale;
-            clone.style.transform = translate + ' ' + scale;
+            // Disable scroll for entire document element and add click event
+            document.body.classList.add('zoom-overlay-active');
+
+            container.classList.add('is-zooming');
+
+            // Set explicit dimensions to avoid max-width issues
+            image.setAttribute('width', imageRect.width);
+            image.setAttribute('height', imageRect.height);
+
+            image.style.msTransform = translate + ' ' + scale;
+            image.style.webkitTransform = translate + ' ' + scale;
+            image.style.transform = translate + ' ' + scale;
         });
 
         // Events
-        container.addEventListener('click', zoomOut);
         window.addEventListener('keydown', function keysPressed (e) {
             e = e || window.event;
 
@@ -184,14 +170,34 @@
         });
 
         // Wait for transition to end
-        clone.addEventListener(transitionEvent, function activateImage ( ) {
-            clone.removeEventListener(transitionEvent, activateImage);
-            pubsub.publish('zoomInEnd', thumb);
+        image.addEventListener(transitionEvent, function activateImage ( ) {
+            image.removeEventListener(transitionEvent, activateImage);
+            pubsub.publish('zoomInEnd', container);
+
+            container.classList.remove('is-zooming');
+            container.classList.add('is-zoomed');
 
             // Load high-res image
-            clone.src = thumbLink.getAttribute('href');
-            pubsub.publish('imageLoaded', clone);
+            if (image.hasAttribute('srcset')) {
+                image.removeAttribute('srcset');
+            }
+            if (image.hasAttribute('sizes')) {
+                image.removeAttribute('sizes');
+            }
+            image.src = container.getAttribute('href');
+            pubsub.publish('imageLoaded', image);
         });
+    }
+
+    function toggleZoom (e) {
+        e.preventDefault();
+
+        var container = e.target.parentNode;
+        if (container.classList.contains('is-zoomed')) {
+            zoomOut(e);
+        } else {
+            zoomIn(e);
+        }
     }
 
     function ImageZoom (elems, options) {
@@ -207,7 +213,7 @@
 
         // Attach click event listeners to all provided elems
         utils.forEach(elems, function (index, link) {
-            link.addEventListener('click', zoomIn);
+            link.addEventListener('click', toggleZoom);
         });
     }
 

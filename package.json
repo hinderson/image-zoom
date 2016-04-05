@@ -14,7 +14,8 @@
     "zoom",
     "lightbox",
     "medium",
-    "enbiggen"
+    "enbiggen",
+    "photos"
   ],
   "author": "Mattias Hinderson",
   "license": "MIT",
