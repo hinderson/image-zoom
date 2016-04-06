@@ -197,11 +197,10 @@
         });
     }
 
-    function toggleZoom (e) {
+    var toggleZoom = function (e) {
         e.preventDefault();
 
-        var container = e.target.parentNode;
-        if (container.classList.contains('is-zoomed')) {
+        if (this.classList.contains('is-zoomed')) {
             zoomOut(e);
         } else {
             zoomIn(e);
