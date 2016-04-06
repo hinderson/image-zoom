@@ -61,6 +61,18 @@
     window.addEventListener('resize', resizeEvent);
     window.addEventListener('scroll', scrollEvent);
 
+    // Performance helpers
+    var hintBrowser = function ( ) {
+        this.style.willChange = 'transform';
+    };
+
+    var removeHint = function ( ) {
+        this.removeEventListener(transitionEvent, removeHint);
+	    this.style.willChange = 'auto';
+    };
+
+    // Transition event helper
+    var transitionEvent = utils.whichTransitionEvent();
 
     function calculateZoom (imageRect, thumbRect) {
         var highResImageWidth = imageRect.width;
@@ -96,28 +108,26 @@
 
         // Reset transforms
         utils.requestAnimFrame.call(window, function ( ) {
-            document.body.classList.remove('zoom-overlay-active');
-
             container.classList.remove('is-zoomed');
 
-            image.style.msTransform = '';
-            image.style.webkitTransform = '';
-            image.style.transform = '';
+            container.style.msTransform = '';
+            container.style.webkitTransform = '';
+            container.style.transform = '';
         });
 
         // Wait for transition to end
-        var transitionEvent = utils.whichTransitionEvent();
-        image.addEventListener(transitionEvent, function resetImage ( ) {
-            image.removeEventListener(transitionEvent, resetImage);
+        container.addEventListener(transitionEvent, function resetImage ( ) {
+            container.removeEventListener(transitionEvent, resetImage);
 
             container.classList.remove('is-active');
 
             pubsub.publish('zoomOutEnd', container);
         });
+
+        container.addEventListener(transitionEvent, removeHint);
     }
 
     function zoomIn (e) {
-        var transitionEvent = utils.whichTransitionEvent();
         var image = e.target;
         var container = image.parentNode;
         var thumbRect = image.getBoundingClientRect();
@@ -145,18 +155,15 @@
 
         // Apply transforms
         utils.requestAnimFrame.call(window, function ( ) {
-            // Disable scroll for entire document element and add click event
-            document.body.classList.add('zoom-overlay-active');
-
             container.classList.add('is-zooming');
 
             // Set explicit dimensions to avoid max-width issues
             image.setAttribute('width', imageRect.width);
             image.setAttribute('height', imageRect.height);
 
-            image.style.msTransform = translate + ' ' + scale;
-            image.style.webkitTransform = translate + ' ' + scale;
-            image.style.transform = translate + ' ' + scale;
+            container.style.msTransform = translate + ' ' + scale;
+            container.style.webkitTransform = translate + ' ' + scale;
+            container.style.transform = translate + ' ' + scale;
         });
 
         // Events
@@ -170,12 +177,13 @@
         });
 
         // Wait for transition to end
-        image.addEventListener(transitionEvent, function activateImage ( ) {
-            image.removeEventListener(transitionEvent, activateImage);
-            pubsub.publish('zoomInEnd', container);
+        container.addEventListener(transitionEvent, function activateImage ( ) {
+            container.removeEventListener(transitionEvent, activateImage);
 
             container.classList.remove('is-zooming');
             container.classList.add('is-zoomed');
+
+            pubsub.publish('zoomInEnd', container);
 
             // Load high-res image
             if (image.hasAttribute('srcset')) {
@@ -214,6 +222,7 @@
         // Attach click event listeners to all provided elems
         utils.forEach(elems, function (index, link) {
             link.addEventListener('click', toggleZoom);
+            link.addEventListener('mouseenter', hintBrowser);
         });
     }
 
