@@ -197,17 +197,18 @@
         });
     }
 
-    var toggleZoom = function (e) {
+    function toggleZoom (e) {
         e.preventDefault();
 
-        if (this.classList.contains('is-zoomed')) {
+        var container = e.target.parentNode;
+        if (container.classList.contains('is-zoomed')) {
             zoomOut(e);
         } else {
             zoomIn(e);
         }
     }
 
-    function ImageZoom (elems, options) {
+    var imageZoom = function (elems, options) {
         if (!elems) return;
 
         // Update default options
@@ -219,19 +220,28 @@
         this.on = pubsub.subscribe;
 
         // Attach click event listeners to all provided elems
-        utils.forEach(elems, function (index, link) {
+        var bindLink = function (link) {
             link.addEventListener('click', toggleZoom);
             link.addEventListener('mouseenter', hintBrowser);
-        });
-    }
+        };
+
+        // Accepts both a single node and a NodeList
+        if (elems.length) {
+            for (var i = 0; i < elems.length; i++) {
+                bindLink(link[i]);
+            }
+        } else {
+            bindLink(elems);
+        }
+    };
 
 	// Expose to interface
 	if (typeof module === 'object' && typeof module.exports === 'object') {
 		// CommonJS, just export
-		module.exports = ImageZoom;
+		module.exports = imageZoom;
 	} else if (typeof define === 'function' && define.amd) {
 		// AMD support
-		define('ImageZoom', function ( ) { return ImageZoom; } );
+		define('imageZoom', function ( ) { return imageZoom; } );
 	}
 
 }));

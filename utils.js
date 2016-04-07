@@ -13,12 +13,6 @@
     		}
     	),
 
-        forEach: function (array, callback, scope) {
-    		for (var i = 0, len = array.length; i < len; i++) {
-    			callback.call(scope, i, array[i]);
-    		}
-    	},
-
         debounce: function (func, wait, immediate) {
     		var timeout;
     		return function() {
