@@ -227,9 +227,9 @@
 
         // Accepts both a single node and a NodeList
         if (elems.length) {
-            for (var i = 0; i < elems.length; i++) {
-                bindLink(link[i]);
-            }
+            utils.forEach(elems, function (index, elem) {
+                bindLink(elem);
+            });
         } else {
             bindLink(elems);
         }
