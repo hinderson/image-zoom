@@ -223,11 +223,11 @@
         };
 
         // Accepts both a single node and a NodeList
-        if (elems.length) {
+        if (utils.isNodeList(elems)) {
             utils.forEach(elems, function (index, elem) {
                 bindLink(elem);
             });
-        } else {
+        } else if (elems) {
             bindLink(elems);
         }
     }
