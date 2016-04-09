@@ -99,17 +99,14 @@
     }
 
     function zoomOut (e) {
-        var image = (e && e.target.nodeName === 'IMG') ? e.target : document.querySelector('[data-zoomable].is-zoomed img');
-        if (!image) { return; }
-
-        var container = image.parentNode;
+        var container = (e && e.delegateTarget) ? e.delegateTarget : document.querySelector('[data-zoomable].is-zoomed');
+        if (!container) { return; }
 
         pubsub.publish('zoomOutStart', container);
 
         // Reset transforms
         utils.requestAnimFrame.call(window, function ( ) {
             container.classList.remove('is-zoomed');
-
             container.style.msTransform = '';
             container.style.webkitTransform = '';
             container.style.transform = '';
@@ -118,9 +115,7 @@
         // Wait for transition to end
         container.addEventListener(transitionEvent, function resetImage ( ) {
             container.removeEventListener(transitionEvent, resetImage);
-
             container.classList.remove('is-active');
-
             pubsub.publish('zoomOutEnd', container);
         });
 
@@ -128,8 +123,8 @@
     }
 
     function zoomIn (e) {
+        var container = e.delegateTarget;
         var image = e.target;
-        var container = image.parentNode;
         var thumbRect = image.getBoundingClientRect();
         var imageRect = {
             width: container.getAttribute('data-width'),
@@ -197,18 +192,17 @@
         });
     }
 
-    function toggleZoom (e) {
+    var toggleZoom = function (e) {
         e.preventDefault();
 
-        var container = e.target.parentNode;
-        if (container.classList.contains('is-zoomed')) {
+        if (e.delegateTarget.classList.contains('is-zoomed')) {
             zoomOut(e);
         } else {
             zoomIn(e);
         }
-    }
+    };
 
-    var imageZoom = function (elems, options) {
+    function ImageZoom (elems, options) {
         if (!elems) return;
 
         // Update default options
@@ -220,9 +214,9 @@
         this.on = pubsub.subscribe;
 
         // Attach click event listeners to all provided elems
-        var bindLink = function (link) {
-            link.addEventListener('click', toggleZoom);
-            link.addEventListener('mouseenter', hintBrowser);
+        var bindLink = function (elem) {
+            elem.addEventListener('click', utils.delegate(utils.criteria.hasAttribute('data-zoomable'), toggleZoom));
+            elem.addEventListener('mouseenter', hintBrowser);
         };
 
         // Accepts both a single node and a NodeList
@@ -233,7 +227,7 @@
         } else {
             bindLink(elems);
         }
-    };
+    }
 
 	// Expose to interface
 	if (typeof module === 'object' && typeof module.exports === 'object') {
