@@ -232,10 +232,10 @@
 	// Expose to interface
 	if (typeof module === 'object' && typeof module.exports === 'object') {
 		// CommonJS, just export
-		module.exports = imageZoom;
+		module.exports = ImageZoom;
 	} else if (typeof define === 'function' && define.amd) {
 		// AMD support
-		define('imageZoom', function ( ) { return imageZoom; } );
+		define('ImageZoom', function ( ) { return ImageZoom; } );
 	}
 
 }));
