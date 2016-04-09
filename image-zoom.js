@@ -181,13 +181,16 @@
             pubsub.publish('zoomInEnd', container);
 
             // Load high-res image
+            image.src = container.getAttribute('href');
+
+            // Remove redundant attributes
             if (image.hasAttribute('srcset')) {
                 image.removeAttribute('srcset');
             }
             if (image.hasAttribute('sizes')) {
                 image.removeAttribute('sizes');
             }
-            image.src = container.getAttribute('href');
+
             pubsub.publish('imageLoaded', image);
         });
     }
