@@ -107,6 +107,7 @@
         // Reset transforms
         utils.requestAnimFrame.call(window, function ( ) {
             container.classList.remove('is-zoomed');
+            container.isAnimating = true;
             container.style.msTransform = '';
             container.style.webkitTransform = '';
             container.style.transform = '';
@@ -116,6 +117,7 @@
         container.addEventListener(transitionEvent, function resetImage ( ) {
             container.removeEventListener(transitionEvent, resetImage);
             container.classList.remove('is-active');
+            container.isAnimating = false;
             pubsub.publish('zoomOutEnd', container);
         });
 
@@ -151,6 +153,7 @@
         // Apply transforms
         utils.requestAnimFrame.call(window, function ( ) {
             container.classList.add('is-zooming');
+            container.isAnimating = true;
 
             // Set explicit dimensions to avoid max-width issues
             image.setAttribute('width', imageRect.width);
@@ -177,6 +180,7 @@
 
             container.classList.remove('is-zooming');
             container.classList.add('is-zoomed');
+            container.isAnimating = false;
 
             pubsub.publish('zoomInEnd', container);
 
@@ -197,6 +201,10 @@
 
     var toggleZoom = function (e) {
         e.preventDefault();
+
+        if (e.delegateTarget.isAnimating) {
+            return;
+        }
 
         if (e.delegateTarget.classList.contains('is-zoomed')) {
             zoomOut(e);
