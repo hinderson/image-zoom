@@ -23,19 +23,20 @@ imgZoom.on('zoomOutStart', function ( ) {
 [data-zoomable] {
     display: block;
 	cursor: zoom-in;
-
-	&.is-active {
-        display: block;
-		position: relative;
-		z-index: 100;
-        transition: transform 0.16s;
-	}
-
-	&.is-zoomed,
-	&.is-zooming {
-		cursor: zoom-out;
-	}
 }
+
+[data-zoomable].is-active {
+    display: block;
+    position: relative;
+    z-index: 100;
+    transition: transform 0.16s;
+}
+
+[data-zoomable].is-zoomed,
+[data-zoomable].is-zooming {
+    cursor: zoom-out;
+}
+
 ```
 
 ## HTML
