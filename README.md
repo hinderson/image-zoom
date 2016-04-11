@@ -5,7 +5,6 @@ Medium style lightbox image zoomer
 
 ## JavaScript
 ```
-// Initiate zoomable images
 var imgZoom = new ImageZoom(document.querySelectorAll('[data-zoomable]'), {
     offset: 60
 });
@@ -21,7 +20,6 @@ imgZoom.on('zoomOutStart', function ( ) {
 
 ## Example CSS
 ```
-/* Zoom-in */
 [data-zoomable] {
     display: block;
 	cursor: zoom-in;
