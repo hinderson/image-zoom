@@ -37,6 +37,10 @@
         viewportHeight: window.innerHeight
     };
 
+    // Element states
+    var activeElems = [];
+    var currentlyZoomedIn = [];
+
     // Window events
     var resizeEvent = utils.debounce(function ( ) {
     	cache.viewportWidth = window.innerWidth;
@@ -60,6 +64,32 @@
 
     window.addEventListener('resize', resizeEvent);
     window.addEventListener('scroll', scrollEvent);
+
+    function keysPressed (e) {
+        e = e || window.event;
+
+        switch(e.which || e.keyCode) {
+            // Esc
+            case 27:
+                var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
+                zoomOut(currentItem);
+                break;
+
+            // Left arrow
+            case 37:
+                e.preventDefault();
+                togglePrevImage();
+                break;
+
+            // Right arrow
+            case 39:
+                e.preventDefault();
+                toggleNextImage();
+                break;
+
+            default: return;
+        }
+    }
 
     // Performance helpers
     var hintBrowser = function ( ) {
@@ -98,11 +128,11 @@
         return imgScaleFactor;
     }
 
-    function zoomOut (e) {
-        var container = (e && e.delegateTarget) ? e.delegateTarget : document.querySelector('[data-zoomable].is-zoomed');
-        if (!container) { return; }
-
+    function zoomOut (container, callback) {
         pubsub.publish('zoomOutStart', container);
+
+        // Remove keyboard commands
+        window.removeEventListener('keydown', keysPressed);
 
         // Reset transforms
         utils.requestAnimFrame.call(window, function ( ) {
@@ -119,15 +149,18 @@
             container.classList.remove('is-active');
             container.isAnimating = false;
             pubsub.publish('zoomOutEnd', container);
+
+            var i = currentlyZoomedIn.indexOf(container);
+            if (i != -1) { currentlyZoomedIn.splice(i, 1); }
+            if (callback) { callback(); }
         });
 
         container.addEventListener(transitionEvent, removeHint);
     }
 
-    function zoomIn (e) {
-        var container = e.delegateTarget;
-        var image = e.target;
-        var thumbRect = image.getBoundingClientRect();
+    function zoomIn (container, callback) {
+        var image = container.querySelector('img:last-of-type');
+        var thumbRect = container.getBoundingClientRect();
         var imageRect = {
             width: container.getAttribute('data-width'),
             height: container.getAttribute('data-height'),
@@ -138,7 +171,7 @@
         container.classList.add('is-active');
 
         // Force repaint
-        var repaint = image.offsetWidth;
+        var repaint = container.offsetWidth;
 
         // Calculate offset
         var viewportY = cache.viewportHeight / 2;
@@ -165,14 +198,7 @@
         });
 
         // Events
-        window.addEventListener('keydown', function keysPressed (e) {
-            e = e || window.event;
-
-            if (e.which === 27 || e.keyCode === 27) {
-                zoomOut();
-                window.removeEventListener('keydown', keysPressed);
-            }
-        });
+        window.addEventListener('keydown', keysPressed);
 
         // Wait for transition to end
         container.addEventListener(transitionEvent, function activateImage ( ) {
@@ -196,20 +222,52 @@
             }
 
             pubsub.publish('imageLoaded', image);
+            currentlyZoomedIn.push(container);
+            if (callback) { callback(); }
         });
     }
 
-    var toggleZoom = function (e) {
-        e.preventDefault();
+    var toggleNextImage = function ( ) {
+        var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
+        var currentIndex = activeElems.indexOf(currentItem);
 
-        if (e.delegateTarget.isAnimating) {
+        if ((currentIndex + 1) >= activeElems.length) {
             return;
         }
 
-        if (e.delegateTarget.classList.contains('is-zoomed')) {
-            zoomOut(e);
+        zoomOut(currentItem, function ( ) {
+            var nextItem = activeElems[currentIndex + 1];
+            zoomIn(nextItem);
+        });
+    };
+
+    var togglePrevImage = function ( ) {
+        var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
+        var currentIndex = activeElems.indexOf(currentItem);
+
+        if (currentIndex <= 0) {
+            return;
+        }
+
+        zoomOut(currentItem, function ( ) {
+            var prevItem = activeElems[currentIndex - 1];
+            zoomIn(prevItem);
+        });
+    };
+
+    var toggleZoom = function (event) {
+        event.preventDefault();
+
+        var container = event.delegateTarget;
+
+        if (container.isAnimating) {
+            return;
+        }
+
+        if (container.classList.contains('is-zoomed')) {
+            zoomOut(container);
         } else {
-            zoomIn(e);
+            zoomIn(container);
         }
     };
 
@@ -224,8 +282,13 @@
         // Export event emitter
         this.on = pubsub.subscribe;
 
+        // Export functions
+        this.prev = togglePrevImage;
+        this.next = toggleNextImage;
+
         // Attach click event listeners to all provided elems
-        var bindLink = function (elem) {
+        var bindElem = function (elem) {
+            activeElems.push(elem);
             elem.addEventListener('click', utils.delegate(utils.criteria.hasAttribute('data-zoomable'), toggleZoom));
             elem.addEventListener('mouseenter', hintBrowser);
         };
@@ -233,10 +296,10 @@
         // Accepts both a single node and a NodeList
         if (utils.isNodeList(elems)) {
             utils.forEach(elems, function (index, elem) {
-                bindLink(elem);
+                bindElem(elem);
             });
         } else if (elems) {
-            bindLink(elems);
+            bindElem(elems);
         }
     }
 

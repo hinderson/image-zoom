@@ -1,5 +1,5 @@
 # Image-Zoom
-Medium style lightbox image zoomer
+Medium.com-style lightbox image zoomer.
 
 # Usage
 
@@ -42,6 +42,6 @@ imgZoom.on('zoomOutStart', function ( ) {
 ## HTML
 ```
 <a href="{{ imageUrl }}" data-zoomable data-width="{{ imageWidth }}" data-height="{{ imageHeight }}">
-    <img src="{{ thumbUrl }}" alt="">
+    <img src="{{ thumbUrl }}" width="{{ thumbWidth }}" height="{{ thumbHeight }}" alt="">
 </a>
 ```
