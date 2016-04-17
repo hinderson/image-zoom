@@ -40,6 +40,7 @@
     // Element states
     var activeElems = [];
     var currentlyZoomedIn = [];
+    var loadedImages = [];
 
     // Window events
     var resizeEvent = utils.debounce(function ( ) {
@@ -128,6 +129,30 @@
         return imgScaleFactor;
     }
 
+    function loadHighResImage (container, src) {
+        var image = container.querySelector('img:last-of-type');
+
+        if (loadedImages.indexOf(image) !== -1) {
+            return;
+        }
+
+        // Load high-res image
+        image.src = src;
+
+        // Remove redundant attributes
+        if (image.hasAttribute('srcset')) {
+            image.removeAttribute('srcset');
+        }
+        if (image.hasAttribute('sizes')) {
+            image.removeAttribute('sizes');
+        }
+
+        image.onload = function ( ) {
+            loadedImages.push(image);
+            pubsub.publish('imageLoaded', image);
+        };
+    }
+
     function zoomOut (container, callback) {
         pubsub.publish('zoomOutStart', container);
 
@@ -159,7 +184,6 @@
     }
 
     function zoomIn (container, callback) {
-        var image = container.querySelector('img:last-of-type');
         var thumbRect = container.getBoundingClientRect();
         var imageRect = {
             width: container.getAttribute('data-width'),
@@ -188,10 +212,6 @@
             container.classList.add('is-zooming');
             container.isAnimating = true;
 
-            // Set explicit dimensions to avoid max-width issues
-            image.setAttribute('width', imageRect.width);
-            image.setAttribute('height', imageRect.height);
-
             container.style.msTransform = translate + ' ' + scale;
             container.style.webkitTransform = translate + ' ' + scale;
             container.style.transform = translate + ' ' + scale;
@@ -207,22 +227,11 @@
             container.classList.remove('is-zooming');
             container.classList.add('is-zoomed');
             container.isAnimating = false;
-
+            currentlyZoomedIn.push(container);
             pubsub.publish('zoomInEnd', container);
 
-            // Load high-res image
-            image.src = container.getAttribute('href');
+            loadHighResImage(container, container.getAttribute('href'));
 
-            // Remove redundant attributes
-            if (image.hasAttribute('srcset')) {
-                image.removeAttribute('srcset');
-            }
-            if (image.hasAttribute('sizes')) {
-                image.removeAttribute('sizes');
-            }
-
-            pubsub.publish('imageLoaded', image);
-            currentlyZoomedIn.push(container);
             if (callback) { callback(); }
         });
     }
