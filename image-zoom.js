@@ -130,6 +130,10 @@
     }
 
     function loadHighResImage (container, src) {
+        if (!(/\.(gif|jpg|jpeg|tiff|png)$/i).test(src)) {
+            return;
+        }
+
         var image = container.querySelector('img:last-of-type');
 
         if (loadedImages.indexOf(image) !== -1) {
