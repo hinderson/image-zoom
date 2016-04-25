@@ -92,16 +92,6 @@
         }
     }
 
-    // Performance helpers
-    var hintBrowser = function ( ) {
-        this.style.willChange = 'transform';
-    };
-
-    var removeHint = function ( ) {
-        this.removeEventListener(transitionEvent, removeHint);
-	    this.style.willChange = 'auto';
-    };
-
     // Transition event helper
     var transitionEvent = utils.whichTransitionEvent();
 
@@ -183,8 +173,6 @@
             if (i != -1) { currentlyZoomedIn.splice(i, 1); }
             if (callback) { callback(); }
         });
-
-        container.addEventListener(transitionEvent, removeHint);
     }
 
     function zoomIn (container, callback) {
@@ -303,7 +291,6 @@
         var bindElem = function (elem) {
             activeElems.push(elem);
             elem.addEventListener('click', utils.delegate(utils.criteria.hasAttribute('data-zoomable'), toggleZoom));
-            elem.addEventListener('mouseenter', hintBrowser);
         };
 
         // Accepts both a single node and a NodeList
