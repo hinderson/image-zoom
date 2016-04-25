@@ -131,7 +131,8 @@
         }
 
         // Load high-res image
-        image.src = src;
+        var highResImage = new Image();
+        highResImage.src = src;
 
         // Remove redundant attributes
         if (image.hasAttribute('srcset')) {
@@ -141,8 +142,9 @@
             image.removeAttribute('sizes');
         }
 
-        image.onload = function ( ) {
+        highResImage.onload = function ( ) {
             loadedImages.push(image);
+            image.src = src;
             pubsub.publish('imageLoaded', image);
         };
     }
