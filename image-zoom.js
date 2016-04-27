@@ -63,9 +63,6 @@
     	}
     };
 
-    window.addEventListener('resize', resizeEvent);
-    window.addEventListener('scroll', scrollEvent);
-
     function keysPressed (e) {
         e = e || window.event;
 
@@ -274,8 +271,23 @@
         }
     };
 
+    var destroy = function ( ) {
+        window.removeEventListener('resize', resizeEvent);
+        window.removeEventListener('scroll', scrollEvent);
+
+        utils.forEach(activeElems, function (index, elem) {
+            elem.removeEventListener('click', elem.eventListener);
+        });
+        activeElems.length = 0;
+    };
+
     function ImageZoom (elems, options) {
         if (!elems) return;
+
+        // Call upon resizeEvent just in case the constructor is called late
+        resizeEvent();
+        window.addEventListener('resize', resizeEvent);
+        window.addEventListener('scroll', scrollEvent);
 
         // Update default options
         if (options) {
@@ -288,11 +300,13 @@
         // Export functions
         this.prev = togglePrevImage;
         this.next = toggleNextImage;
+        this.destroy = destroy;
 
         // Attach click event listeners to all provided elems
         var bindElem = function (elem) {
             activeElems.push(elem);
-            elem.addEventListener('click', utils.delegate(utils.criteria.hasAttribute('data-zoomable'), toggleZoom));
+            elem.eventListener = utils.delegate(utils.criteria.hasAttribute('data-zoomable'), toggleZoom);
+            elem.addEventListener('click', elem.eventListener);
         };
 
         // Accepts both a single node and a NodeList
