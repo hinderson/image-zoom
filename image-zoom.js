@@ -277,18 +277,6 @@
                     zoomOut(currentItem);
                     break;
 
-                // Left arrow
-                case 37:
-                    e.preventDefault();
-                    togglePrevImage();
-                    break;
-
-                // Right arrow
-                case 39:
-                    e.preventDefault();
-                    toggleNextImage();
-                    break;
-
                 default: return;
             }
         }
@@ -341,6 +329,8 @@
             prev: togglePrevImage,
             next: toggleNextImage,
             destroy: destroy,
+            zoomIn: zoomIn,
+            zoomOut: zoomOut,
         };
     }
 
