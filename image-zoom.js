@@ -184,6 +184,10 @@
         }
 
         function zoomOut (container, callback) {
+            if (!container || container.isAnimating) {
+                return;
+            }
+
             publish('zoomOutStart', container);
 
             // Remove keyboard commands
