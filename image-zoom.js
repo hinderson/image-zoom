@@ -10,20 +10,18 @@
         // AMD
         define([
             './utils',
-            './pubsub'
-        ], function(utils, pubsub) {
-            return factory(window, utils, pubsub);
+        ], function(utils) {
+            return factory(window, utils);
         });
     } else if (typeof exports == 'object') {
         // CommonJS
         module.exports = factory(
             window,
-            require('./utils'),
-            require('./pubsub')
+            require('./utils')
         );
     }
 
-}(window, function factory (window, utils, pubsub) {
+}(window, function factory (window, utils) {
     'use strict';
 
     // Constants
@@ -56,7 +54,7 @@
     // Transition event helper
     var transitionEvent = utils.whichTransitionEvent();
 
-    function calculateZoom (imageRect, thumbRect) {
+    var calculateZoom = function (imageRect, thumbRect) {
         var highResImageWidth = imageRect.width;
         var highResImageHeight = imageRect.height;
 
@@ -78,7 +76,7 @@
         }
 
         return imgScaleFactor;
-    }
+    };
 
     // Constructor
     function ImageZoom (elems, options) {
@@ -105,6 +103,32 @@
         window.addEventListener('resize', resizeEvent);
         window.addEventListener('scroll', scrollEvent);
 
+        // Event emitter
+        var topic = {};
+
+        var subscribe = function (name, listener) {
+        	if (!topic[name]) {
+        		topic[name] = { queue: [] };
+        	}
+        	var index = topic[name].queue.push(listener) - 1;
+
+        	return {
+        		remove: function() {
+        			delete topic[name].queue[index];
+        		}
+        	};
+        };
+
+        var publish = function (name, data) {
+        	if (!topic[name] || topic[name].queue.length === 0) {
+        		return;
+        	}
+
+        	topic[name].queue.forEach(function (callback) {
+        		callback(data || null);
+        	});
+        };
+
         // Private functions
         function zoomIn (container, callback) {
             var thumbRect = container.getBoundingClientRect();
@@ -113,7 +137,7 @@
                 height: container.getAttribute('data-height'),
             };
 
-            pubsub.publish('zoomInStart', container);
+            publish('zoomInStart', container);
 
             container.classList.add('is-active');
 
@@ -151,7 +175,7 @@
                 container.classList.add('is-zoomed');
                 container.isAnimating = false;
                 currentlyZoomedIn.push(container);
-                pubsub.publish('zoomInEnd', container);
+                publish('zoomInEnd', container);
 
                 loadHighResImage(container, container.getAttribute('href'));
 
@@ -160,7 +184,7 @@
         }
 
         function zoomOut (container, callback) {
-            pubsub.publish('zoomOutStart', container);
+            publish('zoomOutStart', container);
 
             // Remove keyboard commands
             window.removeEventListener('keydown', keysPressed);
@@ -179,7 +203,7 @@
                 container.removeEventListener(transitionEvent, resetImage);
                 container.classList.remove('is-active');
                 container.isAnimating = false;
-                pubsub.publish('zoomOutEnd', container);
+                publish('zoomOutEnd', container);
 
                 var i = currentlyZoomedIn.indexOf(container);
                 if (i != -1) { currentlyZoomedIn.splice(i, 1); }
@@ -213,7 +237,7 @@
             highResImage.onload = function ( ) {
                 loadedImages.push(image);
                 image.src = src;
-                pubsub.publish('imageLoaded', image);
+                publish('imageLoaded', image);
             };
         }
 
@@ -225,10 +249,9 @@
                 return;
             }
 
-            zoomOut(currentItem, function ( ) {
-                var prevItem = activeElems[currentIndex - 1];
-                zoomIn(prevItem);
-            });
+            var prevItem = activeElems[currentIndex - 1];
+            zoomOut(currentItem, zoomIn.bind(null, prevItem));
+            publish('togglePrevImage', prevItem);
         }
 
         function toggleNextImage ( ) {
@@ -239,10 +262,9 @@
                 return;
             }
 
-            zoomOut(currentItem, function ( ) {
-                var nextItem = activeElems[currentIndex + 1];
-                zoomIn(nextItem);
-            });
+            var nextItem = activeElems[currentIndex + 1];
+            zoomOut(currentItem, zoomIn.bind(null, nextItem));
+            publish('toggleNextImage', nextItem);
         }
 
         function keysPressed (e) {
@@ -315,7 +337,7 @@
 
         // Exposed methods
         return {
-            on: pubsub.subscribe,
+            on: subscribe,
             prev: togglePrevImage,
             next: toggleNextImage,
             destroy: destroy,
