@@ -7,14 +7,12 @@
     'use strict';
 
     if (typeof define == 'function' && define.amd) {
-        // AMD
         define([
             './utils',
         ], function(utils) {
             return factory(window, utils);
         });
     } else if (typeof exports == 'object') {
-        // CommonJS
         module.exports = factory(
             window,
             require('./utils')
@@ -154,6 +152,9 @@
             // Calculate scale ratio
             var scale = 'scale(' + calculateZoom(imageRect, thumbRect) + ')';
 
+            // Set initial scroll
+            cache.initialScrollY = cache.lastScrollY;
+
             // Apply transforms
             utils.requestAnimFrame.call(window, function ( ) {
                 container.classList.add('is-zooming');
@@ -166,6 +167,7 @@
 
             // Events
             window.addEventListener('keydown', keysPressed);
+            window.addEventListener('scroll', scrollBounds);
 
             // Wait for transition to end
             container.addEventListener(transitionEvent, function activateImage ( ) {
@@ -188,10 +190,11 @@
                 return;
             }
 
-            publish('zoomOutStart', container);
-
-            // Remove keyboard commands
+            // Remove events
             window.removeEventListener('keydown', keysPressed);
+            window.removeEventListener('scroll', scrollBounds);
+
+            publish('zoomOutStart', container);
 
             // Reset transforms
             utils.requestAnimFrame.call(window, function ( ) {
@@ -274,16 +277,19 @@
         function keysPressed (e) {
             e = e || window.event;
 
-            switch(e.which || e.keyCode) {
-                // Esc
-                case 27:
-                    var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
-                    zoomOut(currentItem);
-                    break;
-
-                default: return;
+            if (e.which === 27 || e.keyCode === 27) {
+                var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
+                zoomOut(currentItem);
             }
         }
+
+        var scrollBounds = utils.throttle(function ( ) {
+            var deltaY = cache.initialScrollY - cache.lastScrollY;
+            if (Math.abs(deltaY) >= 60) {
+                var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
+                zoomOut(currentItem);
+            }
+        }, 250);
 
         function destroy ( ) {
             window.removeEventListener('resize', resizeEvent);
@@ -340,10 +346,8 @@
 
     // Expose to interface
 	if (typeof module === 'object' && typeof module.exports === 'object') {
-		// CommonJS, just export
 		module.exports = ImageZoom;
 	} else if (typeof define === 'function' && define.amd) {
-		// AMD support
 		define('ImageZoom', function ( ) { return ImageZoom; } );
 	}
 }));
