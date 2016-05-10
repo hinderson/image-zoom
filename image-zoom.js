@@ -285,7 +285,7 @@
 
         var scrollBounds = utils.throttle(function ( ) {
             var deltaY = cache.initialScrollY - cache.lastScrollY;
-            if (Math.abs(deltaY) >= 60) {
+            if (Math.abs(deltaY) >= OFFSET) {
                 var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
                 zoomOut(currentItem);
             }
