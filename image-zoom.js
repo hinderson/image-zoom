@@ -145,31 +145,31 @@
         };
 
         // Private events
-        var keysPressed = function (e) {
+        function keysPressed (e) {
             e = e || window.event;
 
             if (e.which === 27 || e.keyCode === 27) {
                 var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
                 zoomOut(currentItem);
             }
-        };
+        }
 
-        var scrollBounds = utils.throttle(function ( ) {
+        function scrollBounds ( ) {
             var deltaY = cache.initialScrollY - cache.lastScrollY;
             if (Math.abs(deltaY) >= OFFSET) {
                 var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
                 zoomOut(currentItem);
             }
-        }, 251);
+        }
 
-        var resizeBounds = utils.debounce(function ( ) {
+        function resizeBounds ( ) {
             var deltaY = cache.initialViewport.width - cache.viewportWidth;
             var deltaX = cache.initialViewport.height - cache.viewportHeight;
             if (Math.abs(deltaY) >= OFFSET || Math.abs(deltaX) >= OFFSET) {
                 var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
                 zoomOut(currentItem);
             }
-        }, 251);
+        }
 
         // Private functions
         function zoomIn (container, callback) {
