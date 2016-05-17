@@ -13,6 +13,20 @@
     		}
     	),
 
+        once: function (element, type, listener, useCapture) {
+            function getSelfRemovingHandler (element, type, listener, useCapture) {
+                return function selfRemoving ( ) {
+                	element.removeEventListener(type, listener, useCapture);
+                	element.removeEventListener(type, selfRemoving, useCapture);
+                };
+            }
+
+            var selfRemoving = getSelfRemovingHandler.apply(null, arguments);
+            element.addEventListener(type, listener, useCapture);
+            element.addEventListener(type, selfRemoving, useCapture);
+            return listener;
+        },
+
         forEach: function (array, callback, scope) {
             for (var i = 0, len = array.length; i < len; i++) {
                 callback.call(scope, i, array[i]);

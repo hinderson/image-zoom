@@ -52,12 +52,12 @@
     // Transition event helper
     var transitionEvent = utils.whichTransitionEvent();
 
-    var calculateZoom = function (imageRect, thumbRect) {
+    function calculateZoom (imageRect, thumbRect) {
         var highResImageWidth = imageRect.width;
         var highResImageHeight = imageRect.height;
 
-        var viewportHeight = cache.viewportHeight - OFFSET;
         var viewportWidth  = cache.viewportWidth - OFFSET;
+        var viewportHeight = cache.viewportHeight - OFFSET;
 
         var maxScaleFactor = highResImageWidth / thumbRect.width;
 
@@ -74,7 +74,24 @@
         }
 
         return imgScaleFactor;
-    };
+    }
+
+    function positionImage (container, thumbRect, imageRect) {
+        // Calculate offset
+        var viewportY = cache.viewportHeight / 2;
+        var viewportX = cache.viewportWidth / 2;
+        var imageCenterY = thumbRect.top + (thumbRect.height / 2);
+        var imageCenterX = thumbRect.left + (thumbRect.width / 2);
+        var translate = 'translate3d(' + (viewportX - imageCenterX) + 'px, ' + (viewportY - imageCenterY) + 'px, 0)';
+
+        // Calculate scale ratio
+        var scale = 'scale(' + calculateZoom(imageRect, thumbRect) + ')';
+
+        // Apply transforms
+        container.style.msTransform = translate + ' ' + scale;
+        container.style.webkitTransform = translate + ' ' + scale;
+        container.style.transform = translate + ' ' + scale;
+    }
 
     // Constructor
     function ImageZoom (elems, options) {
@@ -127,14 +144,35 @@
         	});
         };
 
+        // Private events
+        var keysPressed = function (e) {
+            e = e || window.event;
+
+            if (e.which === 27 || e.keyCode === 27) {
+                var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
+                zoomOut(currentItem);
+            }
+        };
+
+        var scrollBounds = utils.throttle(function ( ) {
+            var deltaY = cache.initialScrollY - cache.lastScrollY;
+            if (Math.abs(deltaY) >= OFFSET) {
+                var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
+                zoomOut(currentItem);
+            }
+        }, 251);
+
+        var resizeBounds = utils.debounce(function ( ) {
+            var deltaY = cache.initialViewport.width - cache.viewportWidth;
+            var deltaX = cache.initialViewport.height - cache.viewportHeight;
+            if (Math.abs(deltaY) >= OFFSET || Math.abs(deltaX) >= OFFSET) {
+                var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
+                zoomOut(currentItem);
+            }
+        }, 251);
+
         // Private functions
         function zoomIn (container, callback) {
-            var thumbRect = container.getBoundingClientRect();
-            var imageRect = {
-                width: container.getAttribute('data-width'),
-                height: container.getAttribute('data-height'),
-            };
-
             publish('zoomInStart', container);
 
             container.classList.add('is-active');
@@ -142,37 +180,29 @@
             // Force repaint
             var repaint = container.offsetWidth;
 
-            // Calculate offset
-            var viewportY = cache.viewportHeight / 2;
-            var viewportX = cache.viewportWidth / 2;
-            var imageCenterY = thumbRect.top + (thumbRect.height / 2);
-            var imageCenterX = thumbRect.left + (thumbRect.width / 2);
-            var translate = 'translate3d(' + (viewportX - imageCenterX) + 'px, ' + (viewportY - imageCenterY) + 'px, 0)';
-
-            // Calculate scale ratio
-            var scale = 'scale(' + calculateZoom(imageRect, thumbRect) + ')';
-
-            // Set initial scroll
+            // Set initial scroll and viewport dimensions
             cache.initialScrollY = cache.lastScrollY;
+            cache.initialViewport = {
+                width: cache.viewportWidth,
+                height: cache.viewportHeight
+            };
+
+            // Store dimensions
+            var thumbRect = container.getBoundingClientRect();
+            var imageRect = {
+                width: container.getAttribute('data-width'),
+                height: container.getAttribute('data-height'),
+            };
 
             // Apply transforms
             utils.requestAnimFrame.call(window, function ( ) {
                 container.classList.add('is-zooming');
                 container.isAnimating = true;
-
-                container.style.msTransform = translate + ' ' + scale;
-                container.style.webkitTransform = translate + ' ' + scale;
-                container.style.transform = translate + ' ' + scale;
+                positionImage(container, thumbRect, imageRect);
             });
 
-            // Events
-            window.addEventListener('keydown', keysPressed);
-            window.addEventListener('scroll', scrollBounds);
-
             // Wait for transition to end
-            container.addEventListener(transitionEvent, function activateImage ( ) {
-                container.removeEventListener(transitionEvent, activateImage);
-
+            utils.once(container, transitionEvent, function ( ) {
                 container.classList.remove('is-zooming');
                 container.classList.add('is-zoomed');
                 container.isAnimating = false;
@@ -180,6 +210,11 @@
                 publish('zoomInEnd', container);
 
                 loadHighResImage(container, container.getAttribute('href'));
+
+                // Events
+                window.addEventListener('keydown', keysPressed);
+                window.addEventListener('scroll', scrollBounds);
+                window.addEventListener('resize', resizeBounds);
 
                 if (callback) { callback(); }
             });
@@ -193,6 +228,7 @@
             // Remove events
             window.removeEventListener('keydown', keysPressed);
             window.removeEventListener('scroll', scrollBounds);
+            window.removeEventListener('resize', resizeBounds);
 
             publish('zoomOutStart', container);
 
@@ -206,8 +242,7 @@
             });
 
             // Wait for transition to end
-            container.addEventListener(transitionEvent, function resetImage ( ) {
-                container.removeEventListener(transitionEvent, resetImage);
+            utils.once(container, transitionEvent, function ( ) {
                 container.classList.remove('is-active');
                 container.isAnimating = false;
                 publish('zoomOutEnd', container);
@@ -273,23 +308,6 @@
             zoomOut(currentItem, zoomIn.bind(null, nextItem));
             publish('toggleNextImage', nextItem);
         }
-
-        function keysPressed (e) {
-            e = e || window.event;
-
-            if (e.which === 27 || e.keyCode === 27) {
-                var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
-                zoomOut(currentItem);
-            }
-        }
-
-        var scrollBounds = utils.throttle(function ( ) {
-            var deltaY = cache.initialScrollY - cache.lastScrollY;
-            if (Math.abs(deltaY) >= OFFSET) {
-                var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
-                zoomOut(currentItem);
-            }
-        }, 250);
 
         function destroy ( ) {
             window.removeEventListener('resize', resizeEvent);
