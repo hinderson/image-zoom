@@ -194,15 +194,7 @@
                 height: container.getAttribute('data-height'),
             };
 
-            // Apply transforms
-            utils.requestAnimFrame.call(window, function ( ) {
-                container.classList.add('is-zooming');
-                container.isAnimating = true;
-                positionImage(container, thumbRect, imageRect);
-            });
-
-            // Wait for transition to end
-            utils.once(container, transitionEvent, function ( ) {
+            var transitionDone = function ( ) {
                 container.classList.remove('is-zooming');
                 container.classList.add('is-zoomed');
                 container.isAnimating = false;
@@ -217,6 +209,16 @@
                 window.addEventListener('resize', resizeBounds);
 
                 if (callback) { callback(); }
+            };
+
+            // Apply transforms
+            utils.requestAnimFrame.call(window, function ( ) {
+                container.classList.add('is-zooming');
+                container.isAnimating = true;
+                positionImage(container, thumbRect, imageRect);
+
+                // Wait for transition to end
+                utils.once(container, transitionEvent, transitionDone);
             });
         }
 
@@ -232,17 +234,7 @@
 
             publish('zoomOutStart', container);
 
-            // Reset transforms
-            utils.requestAnimFrame.call(window, function ( ) {
-                container.classList.remove('is-zoomed');
-                container.isAnimating = true;
-                container.style.msTransform = '';
-                container.style.webkitTransform = '';
-                container.style.transform = '';
-            });
-
-            // Wait for transition to end
-            utils.once(container, transitionEvent, function ( ) {
+            var transitionDone = function ( ) {
                 container.classList.remove('is-active');
                 container.isAnimating = false;
                 publish('zoomOutEnd', container);
@@ -250,6 +242,18 @@
                 var i = currentlyZoomedIn.indexOf(container);
                 if (i != -1) { currentlyZoomedIn.splice(i, 1); }
                 if (callback) { callback(); }
+            };
+
+            // Reset transforms
+            utils.requestAnimFrame.call(window, function ( ) {
+                container.classList.remove('is-zoomed');
+                container.isAnimating = true;
+                container.style.msTransform = '';
+                container.style.webkitTransform = '';
+                container.style.transform = '';
+
+                // Wait for transition to end
+                utils.once(container, transitionEvent, transitionDone);
             });
         }
 
