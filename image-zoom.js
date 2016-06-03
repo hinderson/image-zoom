@@ -270,7 +270,13 @@
 
             // Load high-res image
             var highResImage = new Image();
-            highResImage.src = src;
+            highResImage.onload = function ( ) {
+                loadedImages.push(image);
+                publish('imageLoaded', image);
+            };
+
+            highResImage.src = src; // Triger an onload event on an invisible <img> tag
+            image.src = src; // Concurrently load the correct image tag
 
             // Remove redundant attributes
             if (image.hasAttribute('srcset')) {
@@ -279,12 +285,6 @@
             if (image.hasAttribute('sizes')) {
                 image.removeAttribute('sizes');
             }
-
-            highResImage.onload = function ( ) {
-                loadedImages.push(image);
-                image.src = src;
-                publish('imageLoaded', image);
-            };
         }
 
         function togglePrevImage ( ) {
