@@ -5,7 +5,7 @@ Medium.com-style lightbox image zoomer.
 
 ## JavaScript
 ```
-var imgZoom = new ImageZoom(document.querySelectorAll('[data-zoomable]'), {
+var imgZoom = new ImageZoom('[data-zoomable]', {
     offset: 60
 });
 
