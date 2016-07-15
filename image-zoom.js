@@ -22,9 +22,6 @@
 }(window, function factory (window, utils) {
     'use strict';
 
-    // Constants
-    var OFFSET = 60;
-
     // Cached values
     var cache = {};
 
@@ -52,12 +49,12 @@
     // Transition event helper
     var transitionEvent = utils.whichTransitionEvent();
 
-    function calculateZoom (imageRect, thumbRect) {
+    function calculateZoom (imageRect, thumbRect, offset) {
         var highResImageWidth = imageRect.width;
         var highResImageHeight = imageRect.height;
 
-        var viewportWidth  = cache.viewportWidth - OFFSET;
-        var viewportHeight = cache.viewportHeight - OFFSET;
+        var viewportWidth  = cache.viewportWidth - offset;
+        var viewportHeight = cache.viewportHeight - offset;
 
         var maxScaleFactor = highResImageWidth / thumbRect.width;
 
@@ -76,7 +73,7 @@
         return imgScaleFactor;
     }
 
-    function positionImage (container, thumbRect, imageRect) {
+    function positionImage (container, thumbRect, imageRect, offset) {
         // Calculate offset
         var viewportY = cache.viewportHeight / 2;
         var viewportX = cache.viewportWidth / 2;
@@ -85,7 +82,7 @@
         var translate = 'translate3d(' + (viewportX - imageCenterX) + 'px, ' + (viewportY - imageCenterY) + 'px, 0)';
 
         // Calculate scale ratio
-        var scale = 'scale(' + calculateZoom(imageRect, thumbRect) + ')';
+        var scale = 'scale(' + calculateZoom(imageRect, thumbRect, offset) + ')';
 
         // Apply transforms
         container.style.msTransform = translate + ' ' + scale;
@@ -94,18 +91,18 @@
     }
 
     // Constructor
-    function ImageZoom (elems, options) {
-        if (!elems) return;
+    function ImageZoom (query, options) {
+        if (!query) return;
 
         // Element states
         var activeElems = [];
         var currentlyZoomedIn = [];
         var loadedImages = [];
 
-        // Update default options
-        if (options) {
-            OFFSET = options.offset;
-        }
+        // Extend options
+        var config = utils.extend({
+            offset: 60
+        }, options);
 
         // Set some cache defaults
         cache = {
@@ -156,7 +153,7 @@
 
         function scrollBounds ( ) {
             var deltaY = cache.initialScrollY - cache.lastScrollY;
-            if (Math.abs(deltaY) >= OFFSET) {
+            if (Math.abs(deltaY) >= config.offset) {
                 var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
                 zoomOut(currentItem);
             }
@@ -165,7 +162,7 @@
         function resizeBounds ( ) {
             var deltaY = cache.initialViewport.width - cache.viewportWidth;
             var deltaX = cache.initialViewport.height - cache.viewportHeight;
-            if (Math.abs(deltaY) >= OFFSET || Math.abs(deltaX) >= OFFSET) {
+            if (Math.abs(deltaY) >= config.offset || Math.abs(deltaX) >= config.offset) {
                 var currentItem = currentlyZoomedIn[currentlyZoomedIn.length - 1];
                 zoomOut(currentItem);
             }
@@ -215,7 +212,7 @@
             utils.requestAnimFrame.call(window, function ( ) {
                 container.classList.add('is-zooming');
                 container.isAnimating = true;
-                positionImage(container, thumbRect, imageRect);
+                positionImage(container, thumbRect, imageRect, config.offset);
 
                 // Wait for transition to end
                 utils.once(container, transitionEvent, transitionDone);
@@ -257,7 +254,7 @@
             });
         }
 
-        function loadHighResImage (container, src, callback) {
+        function loadHighResImage (container, src) {
             if (!(/\.(gif|jpg|jpeg|tiff|png)$/i).test(src)) {
                 return;
             }
@@ -340,20 +337,11 @@
         }
 
         // Attach click event listeners to all provided elems
-        var bindElem = function (elem) {
+        utils.forEach(document.querySelectorAll(query), function (index, elem) {
             activeElems.push(elem);
             elem.eventListener = utils.delegate(utils.criteria.hasAttribute('data-zoomable'), toggleZoom);
             elem.addEventListener('click', elem.eventListener);
-        };
-
-        // Accepts both a single node and a NodeList
-        if (utils.isNodeList(elems)) {
-            utils.forEach(elems, function (index, elem) {
-                bindElem(elem);
-            });
-        } else if (elems) {
-            bindElem(elems);
-        }
+        });
 
         // Exposed methods
         return {
