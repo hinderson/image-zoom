@@ -337,7 +337,8 @@
         }
 
         // Attach click event listeners to all provided elems
-        utils.forEach(document.querySelectorAll(query), function (index, elem) {
+        var elems = (typeof query === 'string' ? document.querySelectorAll(query) : query);
+        utils.forEach(elems, function (index, elem) {
             activeElems.push(elem);
             elem.eventListener = utils.delegate(utils.criteria.hasAttribute('data-zoomable'), toggleZoom);
             elem.addEventListener('click', elem.eventListener);
