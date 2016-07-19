@@ -22,8 +22,14 @@
 }(window, function factory (window, utils) {
     'use strict';
 
+    // Constants
+    var DEFAULTS = {
+        offset: 60
+    };
+
     // Cached values
     var cache = {};
+    var cancelZoom = false;
 
     // Window events
     var resizeEvent = utils.debounce(function ( ) {
@@ -73,7 +79,14 @@
         return imgScaleFactor;
     }
 
-    function positionImage (container, thumbRect, imageRect, offset) {
+    function positionImage (container, offset) {
+        // Get rectangle dimensions
+        var thumbRect = container.getBoundingClientRect();
+        var imageRect = {
+            width: container.getAttribute('data-width'),
+            height: container.getAttribute('data-height'),
+        };
+
         // Calculate offset
         var viewportY = cache.viewportHeight / 2;
         var viewportX = cache.viewportWidth / 2;
@@ -82,7 +95,7 @@
         var translate = 'translate3d(' + (viewportX - imageCenterX) + 'px, ' + (viewportY - imageCenterY) + 'px, 0)';
 
         // Calculate scale ratio
-        var scale = 'scale(' + calculateZoom(imageRect, thumbRect, offset) + ')';
+        var scale = 'scale(' + calculateZoom(imageRect, thumbRect, offset || DEFAULTS.offset) + ')';
 
         // Apply transforms
         container.style.msTransform = translate + ' ' + scale;
@@ -100,9 +113,7 @@
         var loadedImages = [];
 
         // Extend options
-        var config = utils.extend({
-            offset: 60
-        }, options);
+        var config = utils.extend(DEFAULTS, options);
 
         // Set some cache defaults
         cache = {
@@ -172,6 +183,12 @@
         function zoomIn (container, callback) {
             publish('zoomInStart', container);
 
+            // Intercept a cancel
+            if (cancelZoom) {
+                cancelZoom = false;
+                return;
+            }
+
             container.classList.add('is-active');
 
             // Force repaint
@@ -182,13 +199,6 @@
             cache.initialViewport = {
                 width: cache.viewportWidth,
                 height: cache.viewportHeight
-            };
-
-            // Store dimensions
-            var thumbRect = container.getBoundingClientRect();
-            var imageRect = {
-                width: container.getAttribute('data-width'),
-                height: container.getAttribute('data-height'),
             };
 
             var transitionDone = function ( ) {
@@ -212,7 +222,7 @@
             utils.requestAnimFrame.call(window, function ( ) {
                 container.classList.add('is-zooming');
                 container.isAnimating = true;
-                positionImage(container, thumbRect, imageRect, config.offset);
+                positionImage(container, config.offset);
 
                 // Wait for transition to end
                 utils.once(container, transitionEvent, transitionDone);
@@ -352,6 +362,9 @@
             destroy: destroy,
             zoomIn: zoomIn,
             zoomOut: zoomOut,
+            cancelCurrentZoom: function ( ) {
+                cancelZoom = true;
+            }
         };
     }
 
