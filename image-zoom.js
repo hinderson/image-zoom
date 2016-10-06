@@ -265,8 +265,13 @@
         }
 
         function loadHighResImage (container, src) {
-            if (!(/\.(gif|jpg|jpeg|tiff|png)$/i).test(src)) {
-                return;
+            var fileExtension = src.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/)[0];
+            if (fileExtension !== '.jpeg' &&
+                fileExtension !== '.jpg' &&
+                fileExtension !== '.png' &&
+                fileExtension !== '.gif' &&
+                fileExtension !== '.tiff') {
+                    return;
             }
 
             var image = container.querySelector('img:last-of-type');
