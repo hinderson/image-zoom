@@ -24,7 +24,8 @@
 
     // Constants
     var DEFAULTS = {
-        offset: 60
+        offset: 60,
+        speed: 180
     };
 
     // Cached values
@@ -55,9 +56,9 @@
     // Transition event helper
     var transitionEvent = utils.whichTransitionEvent();
 
-    function calculateZoom (imageRect, thumbRect, offset) {
-        var highResImageWidth = imageRect.width;
-        var highResImageHeight = imageRect.height;
+    function calculateZoom (fullImageRect, thumbRect, offset) {
+        var highResImageWidth = fullImageRect.width;
+        var highResImageHeight = fullImageRect.height;
 
         var viewportWidth  = cache.viewportWidth - offset;
         var viewportHeight = cache.viewportHeight - offset;
@@ -79,12 +80,13 @@
         return imgScaleFactor;
     }
 
-    function positionImage (container, offset) {
+    function positionImage ($container, offset) {
         // Get rectangle dimensions
-        var thumbRect = container.getBoundingClientRect();
-        var imageRect = {
-            width: container.getAttribute('data-width'),
-            height: container.getAttribute('data-height'),
+        var $image = $container.firstChild;
+        var thumbRect = $image.getBoundingClientRect();
+        var fullImageRect = {
+            width: $container.getAttribute('data-width'),
+            height: $container.getAttribute('data-height'),
         };
 
         // Calculate offset
@@ -95,12 +97,21 @@
         var translate = 'translate3d(' + (viewportX - imageCenterX) + 'px, ' + (viewportY - imageCenterY) + 'px, 0)';
 
         // Calculate scale ratio
-        var scale = 'scale(' + calculateZoom(imageRect, thumbRect, offset || DEFAULTS.offset) + ')';
+        var scale = 'scale(' + calculateZoom(fullImageRect, thumbRect, offset || DEFAULTS.offset) + ')';
 
-        // Apply transforms
-        container.style.msTransform = translate + ' ' + scale;
-        container.style.webkitTransform = translate + ' ' + scale;
-        container.style.transform = translate + ' ' + scale;
+        utils.requestAnimFrame.call(window, function ( ) {
+            // Apply transitions
+            $image.style.msTransition = '-ms-transform ' + DEFAULTS.speed + 'ms';
+            $image.style.webkitTransition = '-webkit-transform ' + DEFAULTS.speed + 'ms';
+            $image.style.transition = 'transform ' + DEFAULTS.speed + 'ms';
+
+            // Apply transforms
+            $image.style.msTransform = translate + ' ' + scale;
+            $image.style.webkitTransform = translate + ' ' + scale;
+            $image.style.transform = translate + ' ' + scale;
+        });
+
+        return $image;
     }
 
     // Constructor
@@ -180,8 +191,8 @@
         }
 
         // Private functions
-        function zoomIn (container, callback) {
-            publish('zoomInStart', container);
+        function zoomIn ($container, callback) {
+            publish('zoomInStart', $container);
 
             // Intercept a cancel
             if (cancelZoom) {
@@ -189,10 +200,10 @@
                 return;
             }
 
-            container.classList.add('is-active');
+            $container.classList.add('is-active');
 
             // Force repaint
-            var repaint = container.offsetWidth;
+            var repaint = $container.offsetWidth;
 
             // Set initial scroll and viewport dimensions
             cache.initialScrollY = cache.lastScrollY;
@@ -202,13 +213,16 @@
             };
 
             var transitionDone = function ( ) {
-                container.classList.remove('is-zooming');
-                container.classList.add('is-zoomed');
-                container.isAnimating = false;
-                currentlyZoomedIn.push(container);
-                publish('zoomInEnd', container);
+                $container.classList.remove('is-zooming');
+                $container.classList.add('is-zoomed');
+                $container.isAnimating = false;
+                currentlyZoomedIn.push($container);
+                publish('zoomInEnd', $container);
 
-                loadHighResImage(container, container.getAttribute('href'));
+                // Give it some time to rest before loading high-res image
+                setTimeout(function ( ) {
+                    loadHighResImage($container, $container.getAttribute('href'));
+                }, 100);
 
                 // Events
                 window.addEventListener('keydown', keysPressed);
@@ -220,17 +234,17 @@
 
             // Apply transforms
             utils.requestAnimFrame.call(window, function ( ) {
-                container.classList.add('is-zooming');
-                container.isAnimating = true;
-                positionImage(container, config.offset);
+                $container.classList.add('is-zooming');
+                $container.isAnimating = true;
 
                 // Wait for transition to end
-                utils.once(container, transitionEvent, transitionDone);
+                var $image = positionImage($container, config.offset);
+                utils.once($image, transitionEvent, transitionDone);
             });
         }
 
-        function zoomOut (container, callback) {
-            if (!container || container.isAnimating) {
+        function zoomOut ($container, callback) {
+            if (!$container || $container.isAnimating) {
                 return;
             }
 
@@ -239,32 +253,39 @@
             window.removeEventListener('scroll', scrollBounds);
             window.removeEventListener('resize', resizeBounds);
 
-            publish('zoomOutStart', container);
+            publish('zoomOutStart', $container);
 
-            var transitionDone = function ( ) {
-                container.classList.remove('is-active');
-                container.isAnimating = false;
-                publish('zoomOutEnd', container);
+            var transitionDone = function (e) {
+                $container.classList.remove('is-active');
+                $container.isAnimating = false;
+                publish('zoomOutEnd', $container);
 
-                var i = currentlyZoomedIn.indexOf(container);
+                var $image = e.target;
+                $image.style.msTransition = '';
+                $image.style.webkitTransition = '';
+                $image.style.transition = '';
+
+                var i = currentlyZoomedIn.indexOf($container);
                 if (i != -1) { currentlyZoomedIn.splice(i, 1); }
                 if (callback) { callback(); }
             };
 
             // Reset transforms
             utils.requestAnimFrame.call(window, function ( ) {
-                container.classList.remove('is-zoomed');
-                container.isAnimating = true;
-                container.style.msTransform = '';
-                container.style.webkitTransform = '';
-                container.style.transform = '';
+                $container.classList.remove('is-zoomed');
+                $container.isAnimating = true;
+
+                var $image = $container.firstChild;
+                $image.style.msTransform = '';
+                $image.style.webkitTransform = '';
+                $image.style.transform = '';
 
                 // Wait for transition to end
-                utils.once(container, transitionEvent, transitionDone);
+                utils.once($image, transitionEvent, transitionDone);
             });
         }
 
-        function loadHighResImage (container, src) {
+        function loadHighResImage ($container, src) {
             var fileExtension = src.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/)[0];
             if (fileExtension !== '.jpeg' &&
                 fileExtension !== '.jpg' &&
@@ -274,28 +295,28 @@
                     return;
             }
 
-            var image = container.querySelector('img:last-of-type');
+            var $image = $container.querySelector('img:last-of-type');
 
-            if (loadedImages.indexOf(image) !== -1) {
+            if (loadedImages.indexOf($image) !== -1) {
                 return;
             }
 
             // Load high-res image
-            var highResImage = new Image();
-            highResImage.onload = function ( ) {
-                loadedImages.push(image);
-                publish('imageLoaded', image);
+            var $highResImage = new Image();
+            $highResImage.onload = function ( ) {
+                loadedImages.push($image);
+                publish('imageLoaded', $image);
             };
 
-            highResImage.src = src; // Triger an onload event on an invisible <img> tag
-            image.src = src; // Concurrently load the correct image tag
+            $highResImage.src = src; // Triger an onload event on an invisible <img> tag
+            $image.src = src; // Concurrently load the correct image tag
 
             // Remove redundant attributes
-            if (image.hasAttribute('srcset')) {
-                image.removeAttribute('srcset');
+            if ($image.hasAttribute('srcset')) {
+                $image.removeAttribute('srcset');
             }
-            if (image.hasAttribute('sizes')) {
-                image.removeAttribute('sizes');
+            if ($image.hasAttribute('sizes')) {
+                $image.removeAttribute('sizes');
             }
         }
 
@@ -336,19 +357,18 @@
         }
 
         function toggleZoom (event) {
-            event.preventDefault();
-
-            var container = event.delegateTarget;
-
-            if (container.isAnimating) {
+            var $container = event.delegateTarget;
+            if ($container.isAnimating) {
                 return;
             }
 
-            if (container.classList.contains('is-zoomed')) {
-                zoomOut(container);
+            if ($container.classList.contains('is-zoomed')) {
+                zoomOut($container);
             } else {
-                zoomIn(container);
+                zoomIn($container);
             }
+
+            event.preventDefault();
         }
 
         // Attach click event listeners to all provided elems
