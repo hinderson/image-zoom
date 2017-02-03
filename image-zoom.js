@@ -25,7 +25,8 @@
     // Constants
     var DEFAULTS = {
         offset: 60,
-        speed: 180
+        speed: 180,
+        easing: 'ease'
     };
 
     // Cached values
@@ -101,9 +102,9 @@
 
         utils.requestAnimFrame.call(window, function ( ) {
             // Apply transitions
-            $image.style.msTransition = '-ms-transform ' + DEFAULTS.speed + 'ms';
-            $image.style.webkitTransition = '-webkit-transform ' + DEFAULTS.speed + 'ms';
-            $image.style.transition = 'transform ' + DEFAULTS.speed + 'ms';
+            $image.style.msTransition = '-ms-transform ' + DEFAULTS.speed + 'ms ' + DEFAULTS.easing;
+            $image.style.webkitTransition = '-webkit-transform ' + DEFAULTS.speed + 'ms ' + DEFAULTS.easing;
+            $image.style.transition = 'transform ' + DEFAULTS.speed + 'ms ' + DEFAULTS.easing;
 
             // Apply transforms
             $image.style.msTransform = translate + ' ' + scale;
