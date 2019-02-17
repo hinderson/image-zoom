@@ -83,7 +83,7 @@
 
     function positionImage ($container, offset) {
         // Get rectangle dimensions
-        var $image = $container.firstChild;
+        var $image = $container.firstElementChild;
         var thumbRect = $image.getBoundingClientRect();
         var fullImageRect = {
             width: $container.getAttribute('data-width'),
@@ -115,6 +115,36 @@
         return $image;
     }
 
+    function EventEmitter() {
+        // Event emitter
+        var topic = {};
+
+        var subscribe = function (name, listener) {
+            if (!topic[name]) {
+                topic[name] = { queue: [] };
+            }
+            var index = topic[name].queue.push(listener) - 1;
+
+            return {
+                remove: function() {
+                    delete topic[name].queue[index];
+                }
+            };
+        };
+
+        var publish = function (name, data) {
+            if (!topic[name] || topic[name].queue.length === 0) {
+                return;
+            }
+
+            topic[name].queue.forEach(function (callback) {
+                callback(data || null);
+            });
+        };
+
+        return { publish: publish, subscribe: subscribe };
+    }
+
     // Constructor
     function ImageZoom (query, options) {
         if (!query) return;
@@ -138,31 +168,7 @@
         window.addEventListener('resize', resizeEvent);
         window.addEventListener('scroll', scrollEvent);
 
-        // Event emitter
-        var topic = {};
-
-        var subscribe = function (name, listener) {
-        	if (!topic[name]) {
-        		topic[name] = { queue: [] };
-        	}
-        	var index = topic[name].queue.push(listener) - 1;
-
-        	return {
-        		remove: function() {
-        			delete topic[name].queue[index];
-        		}
-        	};
-        };
-
-        var publish = function (name, data) {
-        	if (!topic[name] || topic[name].queue.length === 0) {
-        		return;
-        	}
-
-        	topic[name].queue.forEach(function (callback) {
-        		callback(data || null);
-        	});
-        };
+        var event = new EventEmitter();
 
         // Private events
         function keysPressed (e) {
@@ -193,7 +199,7 @@
 
         // Private functions
         function zoomIn ($container, callback) {
-            publish('zoomInStart', $container);
+            event.publish('zoomInStart', $container);
 
             // Intercept a cancel
             if (cancelZoom) {
@@ -218,7 +224,7 @@
                 $container.classList.add('is-zoomed');
                 $container.isAnimating = false;
                 currentlyZoomedIn.push($container);
-                publish('zoomInEnd', $container);
+                event.publish('zoomInEnd', $container);
 
                 // Give it some time to rest before loading high-res image
                 setTimeout(function ( ) {
@@ -254,12 +260,12 @@
             window.removeEventListener('scroll', scrollBounds);
             window.removeEventListener('resize', resizeBounds);
 
-            publish('zoomOutStart', $container);
+            event.publish('zoomOutStart', $container);
 
             var transitionDone = function (e) {
                 $container.classList.remove('is-active');
                 $container.isAnimating = false;
-                publish('zoomOutEnd', $container);
+                event.publish('zoomOutEnd', $container);
 
                 var $image = e.target;
                 $image.style.msTransition = '';
@@ -276,7 +282,7 @@
                 $container.classList.remove('is-zoomed');
                 $container.isAnimating = true;
 
-                var $image = $container.firstChild;
+                var $image = $container.firstElementChild;
                 $image.style.msTransform = '';
                 $image.style.webkitTransform = '';
                 $image.style.transform = '';
@@ -287,12 +293,13 @@
         }
 
         function loadHighResImage ($container, src) {
-            var fileExtension = src.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/)[0];
-            if (fileExtension !== '.jpeg' &&
-                fileExtension !== '.jpg' &&
-                fileExtension !== '.png' &&
-                fileExtension !== '.gif' &&
-                fileExtension !== '.tiff') {
+            var fileExtension = src.match(/\.([0-9a-z]+)(?=[?#])|(\.)(?:[\w]+)$/);
+            if (!fileExtension) return;
+            if (!fileExtension[0] !== '.jpeg' &&
+                fileExtension[0] !== '.jpg' &&
+                fileExtension[0] !== '.png' &&
+                fileExtension[0] !== '.gif' &&
+                fileExtension[0] !== '.tiff') {
                     return;
             }
 
@@ -306,7 +313,7 @@
             var $highResImage = new Image();
             $highResImage.onload = function ( ) {
                 loadedImages.push($image);
-                publish('imageLoaded', $image);
+                event.publish('imageLoaded', $image);
             };
 
             $highResImage.src = src; // Triger an onload event on an invisible <img> tag
@@ -331,7 +338,7 @@
 
             var prevItem = activeElems[currentIndex - 1];
             zoomOut(currentItem, zoomIn.bind(null, prevItem));
-            publish('togglePrevImage', prevItem);
+            event.publish('togglePrevImage', prevItem);
         }
 
         function toggleNextImage ( ) {
@@ -344,7 +351,7 @@
 
             var nextItem = activeElems[currentIndex + 1];
             zoomOut(currentItem, zoomIn.bind(null, nextItem));
-            publish('toggleNextImage', nextItem);
+            event.publish('toggleNextImage', nextItem);
         }
 
         function destroy ( ) {
@@ -382,7 +389,7 @@
 
         // Exposed methods
         return {
-            on: subscribe,
+            on: event.subscribe,
             prev: togglePrevImage,
             next: toggleNextImage,
             destroy: destroy,
